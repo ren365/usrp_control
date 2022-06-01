@@ -1,5 +1,4 @@
 % postprocess to get BER (and EVM)
-addpath("../../Library")
 rng(0);
 
     sendDatas = [true,false];
@@ -15,7 +14,7 @@ rng(0);
     filePathMat = "Label/";
     protStr = "VHT";
     psdu = 2000;
-    fileName = protStr + '_' + cbw + '_' + psdu;
+    fileName = protStr + '_' + cbw +'_code_'+mcs+ '_length_' + psdu;
     psduData = randi(2, [psdu*8 1]) - 1;
 
     cfgVHT = wlanVHTConfig( ...
