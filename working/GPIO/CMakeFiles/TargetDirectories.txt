@@ -1,0 +1,3 @@
+/home/zehaow/tmpWorking/usrp_control/working/GPIO/CMakeFiles/rebuild_cache.dir
+/home/zehaow/tmpWorking/usrp_control/working/GPIO/CMakeFiles/edit_cache.dir
+/home/zehaow/tmpWorking/usrp_control/working/GPIO/CMakeFiles/gpio_test.dir

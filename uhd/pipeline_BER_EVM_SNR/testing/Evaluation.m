@@ -1,19 +1,22 @@
 % postprocess to get BER (and EVM)
-addpath("../../Library")
 rng(0);
 
-    cbw = 'CBW20';                     % Channel bandwidth
+    cbw = 'CBW5';                     % Channel bandwidth
     ntx = 1;                           % Number of transmit antennas
     nsts = 1;                          % Number of space-time streams
     nrx = 1;                           % Number of receive antennas
-    mcs = 2;
+    mcs = 7;
     filePathBin = "Tx/";
     filePathMat = "Label/";
     protStr = "Non-HT";
     psdu = 3337;
     fileName = protStr + '_' + cbw + '_' + psdu;
     psduData = randi(2, [psdu*8 1]) - 1;
-    [wave,cfgHT] = GetWaveform(protStr, cbw, mcs, psdu, ntx, psduData);
+    cfgHT = wlanNonHTConfig('ChannelBandwidth',cbw, ... 
+        'MCS',mcs,...
+        'PSDULength',psdu);
+    wave = wlanWaveformGenerator(psduData,cfgHT);
+%     [wave,cfgHT] = GetWaveform(protStr, cbw, mcs, psdu, ntx, psduData);
 
 if true
     wave = 0.01* wave;

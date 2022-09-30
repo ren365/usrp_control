@@ -1,0 +1,18 @@
+#IncludeRegexLine: ^[ 	]*[#%][ 	]*(include|import)[ 	]*[<"]([^">]+)([">])
+
+#IncludeRegexScan: ^.*$
+
+#IncludeRegexComplain: ^$
+
+#IncludeRegexTransform: 
+
+/home/zehaow/tmpWorking/usrp_control/working/GPIO/gpio_test.cpp
+uhd/usrp/multi_usrp.hpp
+-
+uhd/utils/safe_main.hpp
+-
+iostream
+-
+thread
+-
+
