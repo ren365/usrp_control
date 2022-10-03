@@ -2,13 +2,13 @@ clear all; close all; clc;
 
 addpath('/home/zehaow/Documents/MATLAB/Examples/R2022b/5g/EVMMeasurementOfNRDownlinkWaveformsExample');
 
-load('waveform_test_100mhz.mat');
+load('waveform_test_100mhz_1frame.mat');
 
 % Set the NR-TM parameters for the receiver
 nrtm = "NR-FR1-TM3.1"; % Reference channel
 bw   = "100MHz";        % Channel bandwidth
 scs  = "30kHz";        % Subcarrier spacing
-dm   = "FDD";          % Duplexing mode
+dm   = "TDD";          % Duplexing mode
 
 captureSampleRate = 122.88e6;
 
