@@ -18,7 +18,10 @@ tmwavegen = hNRReferenceWaveformGenerator(nrtm,bw,scs,dm);
 frequencyCorrectionRange = -100e3:1e3:100e3; 
 
 rxWaveform = waveStruct.waveform + 0.0001*randn([length(waveStruct.waveform),1]);
-
+close all
+waveform_rx = File2Wave("rx_file.bin");
+waveform_rx_select = waveform_rx(end-0.295e6:end-0.16e6,1);
+rxWaveform = waveform_rx_select;
 
 [rxWaveform, coarseOffset] = DMRSFrequencyCorrection(rxWaveform,captureSampleRate,...
     frequencyCorrectionRange,tmwavegen,resourcesInfo); 
