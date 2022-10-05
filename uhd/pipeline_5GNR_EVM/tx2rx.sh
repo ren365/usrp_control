@@ -13,18 +13,18 @@ bandTx=100000000
 bandRx=100000000
 rateTx=$bandTx
 rateRx=$bandRx
-gain=15
-freq=3000000000
+gain=30
+freq=3500000000
 fileTx="5GNR_sent_withPadding.bin"
 fileRx="5GNR_rx.bin"
 
 
 # Transmission
-./tx --args serial=$serialTx --channel $channelTx --ant $antTx --gain $gain --file $fileTx --type float --freq $freq --rate $rateTx --bw $bandTx --repeat
-pid=$txpid
-sleep 1s
-./rx --args serial=$serialRx --channel $channelRx --ant $antRx --gain $gain --file $fileRx --type float --freq $freq -- rate $rateRx --bw $bandRx 
-pid=$rxpid
-sleep 0.25s
+./tx_samples_from_file --args serial=$serialTx --channel $channelTx --ant $antTx --gain $gain --file $fileTx --type float --freq $freq --rate $rateTx --bw $bandTx --repeat &
+txpid=$!
+sleep 7s
+./rx_samples_to_file --args serial=$serialRx --channel $channelRx --ant $antRx --gain $gain --file $fileRx --type float --freq $freq -- rate $rateRx --bw $bandRx &
+rxpid=$!
+sleep 9s
 kill -9 $rxpid
 kill -9 $txpid
