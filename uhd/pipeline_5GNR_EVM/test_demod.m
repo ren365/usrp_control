@@ -4,6 +4,11 @@ addpath('/home/zehaow/Documents/MATLAB/Examples/R2022b/5g/EVMMeasurementOfNRDown
 
 load('waveform_test_100mhz_1frame.mat');
 
+waveform_rx = File2Wave("5GNR_rx.bin");
+% waveform_rx_select = waveform_rx(end-2.5e5:end-1e5,1);
+waveform_rx_select = waveform_rx(end-2.7e5:end,1);
+rxWaveform = waveform_rx_select;
+
 % Set the NR-TM parameters for the receiver
 nrtm = "NR-FR1-TM3.1"; % Reference channel
 bw   = "100MHz";        % Channel bandwidth
@@ -13,16 +18,11 @@ dm   = "TDD";          % Duplexing mode
 captureSampleRate = 122.88e6;
 
 tmwavegen = hNRReferenceWaveformGenerator(nrtm,bw,scs,dm);
-[~,tmwaveinfo,resourcesInfo] = generateWaveform(tmwavegen);
-
+[txWaveform,tmwaveinfo,resourcesInfo] = generateWaveform(tmwavegen);
+rxWaveform = txWaveform;
 frequencyCorrectionRange = -100e3:1e3:100e3; 
 
-rxWaveform = waveStruct.waveform + 0.0001*randn([length(waveStruct.waveform),1]);
-close all
-waveform_rx = File2Wave("rx_file.bin");
-waveform_rx_select = waveform_rx(end-0.295e6:end-0.16e6,1);
-rxWaveform = waveform_rx_select;
-
+% rxWaveform = waveStruct.waveform + 0.0001*randn([length(waveStruct.waveform),1]);
 [rxWaveform, coarseOffset] = DMRSFrequencyCorrection(rxWaveform,captureSampleRate,...
     frequencyCorrectionRange,tmwavegen,resourcesInfo); 
 
@@ -42,3 +42,10 @@ cfg.Label = nrtm;                   % Set to TM name of captured waveform
 cfg.SampleRate = captureSampleRate; % Use sample rate during capture
 
 [evmInfo,eqSym,refSym] = hNRPDSCHEVM(tmwavegen.Config,rxWaveform,cfg);
+
+modulation='64QAM';
+ncellid=1;
+rnti=1;
+rxbits = nrPDSCHDecode(eqSym,modulation,ncellid,rnti);
+
+
