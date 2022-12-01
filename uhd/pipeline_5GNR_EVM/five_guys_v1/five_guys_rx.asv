@@ -1,13 +1,26 @@
+clear all 
+close all
+% parameters
+settings = {};
+settings.modulation = "16QAM";
+settings.codeRate = 490/1024;
+%% mimo setting: keep as 1 before having multi-channels uhd exe file 
+settings.NumLayers = 1;
+settings.nTxAnts = 1;
+settings.nRxAnts = 1;
+
+
+
 % Simulation Parameters
-SNRdB = 10;                % SNR in dB
+nSlot = 0;
 totalNoSlots = 1;%20;         % Number of slots to simulate
 perfectEstimation = false; % Perfect synchronization and channel estimation
 rng("default");            % Set default random number generator for repeatability
 carrier = nrCarrierConfig;
 % PDSCH and DM-RS Configuration
 pdsch = nrPDSCHConfig;
-pdsch.Modulation = "16QAM";
-pdsch.NumLayers = 1;
+pdsch.Modulation = settings.modulation;
+pdsch.NumLayers = settings.NumLayers;
 pdsch.PRBSet = 0:carrier.NSizeGrid-1;     % Full band allocation
 pdsch.DMRS.DMRSAdditionalPosition = 1;
 pdsch.DMRS.DMRSConfigurationType = 1;
@@ -17,9 +30,9 @@ NHARQProcesses = 16;     % Number of parallel HARQ processes
 rvSeq = [0 2 3 1];
 % Coding rate
 if pdsch.NumCodewords == 1
-    codeRate = 490/1024;
+    codeRate = settings.codeRate;
 else
-    codeRate = [490 490]./1024;
+    codeRate = [settings.codeRate, settings.codeRate];
 end
 % Create DL-SCH encoder object
 encodeDLSCH = nrDLSCH;
@@ -36,8 +49,8 @@ decodeDLSCH.MaximumLDPCIterationCount = 6;
 harqEntity = HARQEntity(0:NHARQProcesses-1,rvSeq,pdsch.NumCodewords);
 
 % Channel Configuration
-nTxAnts = 1;
-nRxAnts = 1;
+nTxAnts = settings.nTxAnts;
+nRxAnts = settings.nRxAnts;
 % Check that the number of layers is valid for the number of antennas
 if pdsch.NumLayers > min(nTxAnts,nRxAnts)
     error("The number of layers ("+string(pdsch.NumLayers)+") must be smaller than min(nTxAnts,nRxAnts) ("+string(min(nTxAnts,nRxAnts))+")")
@@ -125,9 +138,11 @@ for nSlot = 0:totalNoSlots-1
         [t,mag] = nrTimingEstimate(carrier,rxWaveform,dmrsIndices,dmrsSymbols);
         offset = hSkipWeakTimingOffset(offset,t,mag);
     end
-    plot(abs(rxWaveform(1+offset:1+offset+length(txWaveform),:)))
-    return 
-    rxWaveform = rxWaveform(1+offset:1+offset+length(txWaveform),:);
+    plot(abs(rxWaveform(1+offset:1+offset+length(txWaveform)-1,:)))
+%     plot(abs(rxWaveform(end-4.05e4:end-4.05e4+length(txWaveform)+200,:)))
+%     return 
+%     rxWaveform = rxWaveform(end-4.05e4:end-4.05e4+length(txWaveform)+200,:);
+    rxWaveform = rxWaveform(1+offset:1+offset+length(txWaveform)-1,:);
     
 %     rxWaveform = rxWaveform(1+offset:end,:);
 
@@ -170,6 +185,13 @@ for nSlot = 0:totalNoSlots-1
     % Constellation for the first layer has a higher SNR than that for the
     % last layer. Flip the layers so that the constellations do not mask
     % each other.
+    data = randi([0 15],length(pdschEq),1);
+    refSym = qammod(data,16,UnitAveragePower=true);
+    evm = comm.EVM;
+    rmsEVM = evm(pdschEq,refSym)
+    scatter(real(pdschEq),imag(pdschEq))
+    hold on 
+    scatter(real(refSym),imag(refSym))
     constPlot(fliplr(pdschEq));
     % PDSCH Decoding
     [dlschLLRs,rxSymbols] = nrPDSCHDecode(carrier,pdsch,pdschEq,noiseEst);

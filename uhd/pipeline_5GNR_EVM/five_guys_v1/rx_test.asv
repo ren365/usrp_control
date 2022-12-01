@@ -11,7 +11,7 @@ waveform_rx_select = waveform_rx(end-4.05e4:end,1);
 % waveform_rx_select = waveform_rx(end-2.5e5:end-1e5);
 
 figure(1);
-plot(abs(waveform_rx_select));
+plot(log(abs(waveform_rx_select)));
 % plot(20*log10(abs(waveform_rx_select)));
 
 figure(2);
