@@ -8,7 +8,10 @@ rx_fileName = "rx.bin";
 
 [rx_waveforms,SNRs] = NR5G_split_package(rx_fileName,length(txsetting.txWaveform))
 
-function [EVM,BER] = get_EVM_BER()
+
+
+
+function [EVM,BER] = get_EVM_BER(pdschEqs,BER_ratio)
 
 
 
