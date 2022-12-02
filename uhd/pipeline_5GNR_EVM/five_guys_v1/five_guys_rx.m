@@ -6,15 +6,32 @@ settings = NR5G_setting();
 
 rx_fileName = "rx.bin";
 
-[rx_waveforms,SNRs] = NR5G_split_package(rx_fileName,length(txsetting.txWaveform))
+[rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txlen)
+
+rx_waveform_snr,noise_level_snr,pdschEqs,BER_ratios = [],[],[],[];
+for i=1:length(rx_waveforms(1,:))
+    % snr
+    rx_waveform_snr = [rx_waveform_snr;rx_waveforms(:,i)];
+    noise_level_snr = [noise_level_snr;noise_levels(:,i)];
+    % decode one packet
+    [pdschEq,BER_ratio] = NR5G_receive(rx_waveforms(:,i),txsetting);
+    % evm
+    pdschSymbols = [pdschSymbols;txsetting.pdschSymbols];
+    pdschEqs = [pdschEqs;pdschEq];
+    % BER
+    BER_ratios = [BER_ratios,BER_ratio];
+end
+SNR = snr(rx_waveform_snr,noise_level_snr);
+[EVM,BER] = get_EVM_BER(pdschEqs,BER_ratio,pdschSymbol);
+disp("SNR:"+(SNR)+", "+"EVM:"+(EVM)+", "+"BER:"+(BER))
 
 
-
-
-function [EVM,BER] = get_EVM_BER(pdschEqs,BER_ratio)
-
-
-
+function [EVM,BER] = get_EVM_BER(pdschSymbols,pdschEqs,BER_ratio)
+    evm = comm.EVM(ReferenceSignalSource="Estimated from reference constellation", ...
+    ReferenceConstellation=pdschSymbols);
+    EVM = evm(pdschEq);
+        
+    BER = mean(BER_ratio);
 end
 
 function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
@@ -35,12 +52,7 @@ function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
     % Equalization
     [pdschRx,pdschHest] = nrExtractResources(txsetting.pdschIndices,txsetting.rxGrid,estChGridLayers);
     [pdschEq,csi] = nrEqualizeMMSE(pdschRx,pdschHest,noiseEst);
-    constPlot.ChannelNames = "Layer "+(txsetting.pdsch.NumLayers:-1:1);
-    constPlot.ShowLegend = true;
-    % Constellation for the first layer has a higher SNR than that for the
-    % last layer. Flip the layers so that the constellations do not mask
-    % each other.
-    constPlot(fliplr(pdschEq));
+    
     % PDSCH Decoding
     [dlschLLRs,rxSymbols] = nrPDSCHDecode(txsetting.carrier,txsetting.pdsch,pdschEq,noiseEst);
     % Scale LLRs by CSI
@@ -63,10 +75,11 @@ function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
 end
 
 % take average across 100 ? 
-function [rx_waveforms,SNRs] = NR5G_split_package(rx_fileName,txlen)
+function [rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txlen)
 
     avgNum = 100;
     rx_waveforms = zeros(txlen,avgNum);
+    noise_levels = zeros(txlen,avgNum);
     SNRs = [];
     rxWaveform_orignal = File2Wave(rx_fileName);
     rxWaveform_orignal = rxWaveform_orignal(end-txlen*avgNum:end,:);
@@ -85,11 +98,12 @@ function [rx_waveforms,SNRs] = NR5G_split_package(rx_fileName,txlen)
         if offset > txlen
             rxWaveform = rxWaveform_orignal(1+offset:1+offset+txlen-1,:);
             noise_level = rxWaveform_orignal(offset-txlen+1:offset,:);
-            snr_calculated = snr(rxWaveform,noise_level);
-            SNRs = [SNRs,snr_calculated];
+            noise_levels(:,indx) = noise_level;
+            % snr_calculated = snr(rxWaveform,noise_level);
+            % SNRs = [SNRs,snr_calculated];
         end
     end
-
+    
 end
 
 

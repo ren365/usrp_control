@@ -65,12 +65,7 @@ function [txsetting] = NR5G_send(settings)
     channel.NumReceiveAntennas = nRxAnts;
     ofdmInfo = nrOFDMInfo(carrier);
     channel.SampleRate = ofdmInfo.SampleRate;
-    
-    % Transmission and Reception
-    constPlot = comm.ConstellationDiagram;                                          % Constellation diagram object
-    constPlot.ReferenceConstellation = getConstellationRefPoints(pdsch.Modulation); % Reference constellation values
-    constPlot.EnableMeasurements = 1;                                               % Enable EVM measurements
-    
+        
     % Initial timing offset
     offset = 0;
     
@@ -130,7 +125,7 @@ function [txsetting] = NR5G_send(settings)
     if settings.generateTX
         Wave2File("tx.bin",txWaveform_send*10)
     end
-    
+
     % record everything and return 
     txsetting.trBlk = trBlk;
     txsetting.txWaveform = txWaveform;
@@ -144,6 +139,7 @@ function [txsetting] = NR5G_send(settings)
     txsetting.trBlkSizes = trBlkSizes;
     txsetting.harqEntity = harqEntity;
     txsetting.pdschInfo = pdschInfo;
+    txsetting.pdschSymbols = pdschSymbols;
 
 end
     
