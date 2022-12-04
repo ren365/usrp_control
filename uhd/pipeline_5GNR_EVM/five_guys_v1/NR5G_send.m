@@ -11,7 +11,7 @@
 % settings.generateTX = true;
 % settings.plotTX = false;
 
-function [txsetting] = NR5G_send(settings)
+function txsetting = NR5G_send(settings)
     txsetting = {};
     nSlot = 0;
     totalNoSlots = 1;%20;         % Number of slots to simulate
@@ -22,7 +22,7 @@ function [txsetting] = NR5G_send(settings)
     carrier.SubcarrierSpacing = settings.SubcarrierSpacing;
     % PDSCH and DM-RS Configuration
     pdsch = nrPDSCHConfig;
-    pdsch.Modulation = settings.modulation;
+    pdsch.Modulation = settings.Modulation;
     pdsch.NumLayers = settings.NumLayers;
     pdsch.PRBSet = 0:carrier.NSizeGrid-1;     % Full band allocation
     pdsch.DMRS.DMRSAdditionalPosition = 1;
@@ -33,9 +33,9 @@ function [txsetting] = NR5G_send(settings)
     rvSeq = [0 2 3 1];
     % Coding rate
     if pdsch.NumCodewords == 1
-        codeRate = settings.codeRate;
+        codeRate = settings.CodeRate;
     else
-        codeRate = [settings.codeRate, settings.codeRate];
+        codeRate = [settings.CodeRate, settings.CodeRate];
     end
     % Create DL-SCH encoder object
     encodeDLSCH = nrDLSCH;
@@ -130,7 +130,6 @@ function [txsetting] = NR5G_send(settings)
     txsetting.trBlk = trBlk;
     txsetting.txWaveform = txWaveform;
     txsetting.carrier = carrier;
-    txsetting.rxGrid = rxGrid;
     txsetting.dmrsIndices = dmrsIndices;
     txsetting.dmrsSymbols = dmrsSymbols;
     txsetting.pdsch = pdsch;
@@ -140,6 +139,7 @@ function [txsetting] = NR5G_send(settings)
     txsetting.harqEntity = harqEntity;
     txsetting.pdschInfo = pdschInfo;
     txsetting.pdschSymbols = pdschSymbols;
+    txsetting.decodeDLSCH = decodeDLSCH;
 
 end
     

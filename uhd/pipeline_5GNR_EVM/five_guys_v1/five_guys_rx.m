@@ -2,13 +2,14 @@ clear all
 close all
 
 settings = NR5G_setting();
-[trBlk,txWaveform,txsetting] = NR5G_send(settings);
+txsetting = NR5G_send(settings);
 
 rx_fileName = "rx.bin";
 
-[rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txlen)
+[rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting);
 
-rx_waveform_snr,noise_level_snr,pdschEqs,BER_ratios = [],[],[],[];
+rx_waveform_snr=[];BER_ratios = [];
+noise_level_snr=[];pdschEqs=[];pdschSymbols=[];
 for i=1:length(rx_waveforms(1,:))
     % snr
     rx_waveform_snr = [rx_waveform_snr;rx_waveforms(:,i)];
@@ -22,11 +23,11 @@ for i=1:length(rx_waveforms(1,:))
     BER_ratios = [BER_ratios,BER_ratio];
 end
 SNR = snr(rx_waveform_snr,noise_level_snr);
-[EVM,BER] = get_EVM_BER(pdschEqs,BER_ratio,pdschSymbol);
+[EVM,BER] = get_EVM_BER(pdschSymbols,BER_ratios,pdschEqs);
 disp("SNR:"+(SNR)+", "+"EVM:"+(EVM)+", "+"BER:"+(BER))
 
 
-function [EVM,BER] = get_EVM_BER(pdschSymbols,pdschEqs,BER_ratio)
+function [EVM,BER] = get_EVM_BER(pdschSymbols,BER_ratio,pdschEq)
     evm = comm.EVM(ReferenceSignalSource="Estimated from reference constellation", ...
     ReferenceConstellation=pdschSymbols);
     EVM = evm(pdschEq);
@@ -40,7 +41,7 @@ function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
     rxGrid = nrOFDMDemodulate(txsetting.carrier,rxWaveform);
     % Channel Estimation
     % Perform practical channel estimation between layers and receive antennas.
-    [estChGridLayers,noiseEst] = nrChannelEstimate(txsetting.carrier,txsetting.rxGrid,txsetting.dmrsIndices,txsetting.dmrsSymbols,'CDMLengths',txsetting.pdsch.DMRS.CDMLengths);
+    [estChGridLayers,noiseEst] = nrChannelEstimate(txsetting.carrier,rxGrid,txsetting.dmrsIndices,txsetting.dmrsSymbols,'CDMLengths',txsetting.pdsch.DMRS.CDMLengths);
 
     % Remove precoding from estChannelGrid before precoding
     % matrix calculation
@@ -50,9 +51,13 @@ function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
     newPrecodingWeight = getPrecodingMatrix(txsetting.pdsch.PRBSet,txsetting.pdsch.NumLayers,estChGridAnts);
 
     % Equalization
-    [pdschRx,pdschHest] = nrExtractResources(txsetting.pdschIndices,txsetting.rxGrid,estChGridLayers);
+    [pdschRx,pdschHest] = nrExtractResources(txsetting.pdschIndices,rxGrid,estChGridLayers);
     [pdschEq,csi] = nrEqualizeMMSE(pdschRx,pdschHest,noiseEst);
     
+    evm = comm.EVM(ReferenceSignalSource="Estimated from reference constellation", ...
+    ReferenceConstellation=txsetting.pdschSymbols);
+    EVM = evm(pdschEq)
+
     % PDSCH Decoding
     [dlschLLRs,rxSymbols] = nrPDSCHDecode(txsetting.carrier,txsetting.pdsch,pdschEq,noiseEst);
     % Scale LLRs by CSI
@@ -63,40 +68,44 @@ function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
         dlschLLRs{cwIdx} = dlschLLRs{cwIdx} .* csi{cwIdx}(:);   % Scale
     end
     % DL-SCH Decoding
-    decodeDLSCH.TransportBlockLength = txsetting.trBlkSizes;
-    [decbits,blkerr] = decodeDLSCH(dlschLLRs,txsetting.pdsch.Modulation,txsetting.pdsch.NumLayers, ...
+    txsetting.decodeDLSCH.TransportBlockLength = txsetting.trBlkSizes;
+    [decbits,blkerr] = txsetting.decodeDLSCH(dlschLLRs,txsetting.pdsch.Modulation,txsetting.pdsch.NumLayers, ...
     txsetting.harqEntity.RedundancyVersion,txsetting.harqEntity.HARQProcessID);
     % % HARQ Process Update
     % statusReport = updateAndAdvance(txsetting.harqEntity,blkerr,txsetting.trBlkSizes,txsetting.pdschInfo.G);    
     % disp("Slot "+(nSlot)+". "+statusReport);
 
-    [number,BER_ratio] = biterr(decbits,txsetting.trBlk)
+%     [number,BER_ratio] = biterr(decbits,txsetting.trBlk);
+    BER_ratio = biterr(decbits,txsetting.trBlk);
+    BER_ratio
 
 end
 
 % take average across 100 ? 
-function [rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txlen)
+function [rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting)
 
-    avgNum = 100;
+    avgNum = 7;
+    offset = 0;
+    txlen = length(txsetting.txWaveform);
+    offset_begin = txlen*20;
     rx_waveforms = zeros(txlen,avgNum);
     noise_levels = zeros(txlen,avgNum);
     SNRs = [];
     rxWaveform_orignal = File2Wave(rx_fileName);
-    rxWaveform_orignal = rxWaveform_orignal(end-txlen*avgNum:end,:);
-
+    rxWaveform_orignal = rxWaveform_orignal(end-3*txlen*100-offset_begin:end,:);
+%     plot(abs(rxWaveform_orignal))
     rxWaveform_remain = rxWaveform_orignal;
     for indx = 1: avgNum
         % Timing Synchronization
-        [t,mag] = nrTimingEstimate(carrier,rxWaveform_remain,dmrsIndices,dmrsSymbols);
+        [t,mag] = nrTimingEstimate(txsetting.carrier,rxWaveform_remain,txsetting.dmrsIndices,txsetting.dmrsSymbols);
         offset = hSkipWeakTimingOffset(offset,t,mag);
-        
-        rxWaveform = rxWaveform(1+offset:1+offset+txlen-1,:);
+indx
+        rxWaveform = rxWaveform_remain(1+offset:1+offset+txlen-1,:);
 
         rx_waveforms(:,indx) = rxWaveform;
-        rxWaveform_remain = rxWaveform(1+offset+txlen:end,:);
+        rxWaveform_remain = rxWaveform_remain(1+offset+txlen+1:end,:);
 
         if offset > txlen
-            rxWaveform = rxWaveform_orignal(1+offset:1+offset+txlen-1,:);
             noise_level = rxWaveform_orignal(offset-txlen+1:offset,:);
             noise_levels(:,indx) = noise_level;
             % snr_calculated = snr(rxWaveform,noise_level);
