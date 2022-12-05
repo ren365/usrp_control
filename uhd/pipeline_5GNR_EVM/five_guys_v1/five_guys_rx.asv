@@ -6,28 +6,36 @@ txsetting = NR5G_send(settings);
 
 rx_fileName = "rx.bin";
 
-[rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting);
+[rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting,settings.packetNum);
 
-rx_waveform_snr=[];BER_ratios = [];
+rx_waveform_snr=[];BER_ratios = [];EVMs = [];
 noise_level_snr=[];pdschEqs=[];pdschSymbols=[];
 for i=1:length(rx_waveforms(1,:))
     % snr
     rx_waveform_snr = [rx_waveform_snr;rx_waveforms(:,i)];
     noise_level_snr = [noise_level_snr;noise_levels(:,i)];
     % decode one packet
-    [pdschEq,BER_ratio] = NR5G_receive(rx_waveforms(:,i),txsetting);
+    [pdschEq,BER_ratio,EVM] = NR5G_receive(rx_waveforms(:,i),txsetting);
     % evm
     pdschSymbols = [pdschSymbols;txsetting.pdschSymbols];
     pdschEqs = [pdschEqs;pdschEq];
+    EVMs = [EVMs,EVM];
     % BER
     BER_ratios = [BER_ratios,BER_ratio];
 end
 SNR = snr(rx_waveform_snr,noise_level_snr);
-[EVM,BER] = get_EVM_BER(pdschEqs,BER_ratios,pdschSymbols);
+if settings.fastEVM
+    [EVM,BER] = get_EVM_BER(pdschSymbols,BER_ratios,pdschEqs);
+else
+    [EVM,BER] = get_EVM_BER_fast(EVMs,BER_ratios);
+end
 disp("SNR:"+(SNR)+", "+"EVM:"+(EVM)+", "+"BER:"+(BER))
 
+function [EVM,BER] = get_EVM_BER(EVMs,BER_ratios)
+    EVM = mea
+end
 
-function [EVM,BER] = get_EVM_BER(pdschSymbols,BER_ratio)
+function [EVM,BER] = get_EVM_BER(pdschSymbols,BER_ratio,pdschEq)
     evm = comm.EVM(ReferenceSignalSource="Estimated from reference constellation", ...
     ReferenceConstellation=pdschSymbols);
     EVM = evm(pdschEq);
@@ -35,7 +43,7 @@ function [EVM,BER] = get_EVM_BER(pdschSymbols,BER_ratio)
     BER = mean(BER_ratio);
 end
 
-function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
+function [pdschEq,BER_ratio,EVM] = NR5G_receive(rxWaveform,txsetting)
 
     % OFDM Demodulation
     rxGrid = nrOFDMDemodulate(txsetting.carrier,rxWaveform);
@@ -82,38 +90,35 @@ function [pdschEq,BER_ratio] = NR5G_receive(rxWaveform,txsetting)
 end
 
 % take average across 100 ? 
-function [rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting)
+function [rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting,packetNum)
 
-    avgNum = 7;
-    offset = 0;
     txlen = length(txsetting.txWaveform);
-    offset_begin = txlen*20;
     rx_waveforms = zeros(txlen,avgNum);
     noise_levels = zeros(txlen,avgNum);
-    SNRs = [];
     rxWaveform_orignal = File2Wave(rx_fileName);
-    rxWaveform_orignal = rxWaveform_orignal(end-3*txlen*100-offset_begin:end,:);
-%     plot(abs(rxWaveform_orignal))
-    rxWaveform_remain = rxWaveform_orignal;
-    for indx = 1: avgNum
+    rxWaveform_orignal = rxWaveform_orignal(end-3*txlen*100:end,:);
+    rxWaveform_remain = rxWaveform_orignal; indx = 1;
+    while(indx <= avgNum && length(rxWaveform_remain) > txlen*3)
         % Timing Synchronization
-        [t,mag] = nrTimingEstimate(txsetting.carrier,rxWaveform_remain,txsetting.dmrsIndices,txsetting.dmrsSymbols);
-        offset = hSkipWeakTimingOffset(offset,t,mag);
-indx
-        rxWaveform = rxWaveform_remain(1+offset:1+offset+txlen-1,:);
-
-        rx_waveforms(:,indx) = rxWaveform;
-        rxWaveform_remain = rxWaveform_remain(1+offset+txlen+1:end,:);
-
-        if offset > txlen
-            rxWaveform = rxWaveform_orignal(1+offset:1+offset+txlen-1,:);
-            noise_level = rxWaveform_orignal(offset-txlen+1:offset,:);
-            noise_levels(:,indx) = noise_level;
-            % snr_calculated = snr(rxWaveform,noise_level);
-            % SNRs = [SNRs,snr_calculated];
+        if indx == 1
+            offset = 0;
+            [t,mag] = nrTimingEstimate(txsetting.carrier,rxWaveform_remain,txsetting.dmrsIndices,txsetting.dmrsSymbols);
+            offset = hSkipWeakTimingOffset(offset,t,mag);
+        else 
+            offset = txlen;
         end
+        rxWaveform = rxWaveform_remain(1+offset:1+offset+txlen-1,:);
+        rx_waveforms(:,indx) = rxWaveform;
+
+        noise_level = rxWaveform_remain(offset-txlen+1:offset,:);
+        noise_levels(:,indx) = noise_level;
+
+        % jump to next packet
+        rxWaveform_remain = rxWaveform_remain(1+offset+2*txlen:end,:);
+        indx = indx + 1;
     end
-    
+    rx_waveforms = rx_waveforms(:,1:indx-1);
+    noise_levels = noise_levels(:,1:indx-1);
 end
 
 

@@ -12,5 +12,8 @@ function settings = NR5G_setting()
     settings.nRxAnts = 1;
     settings.generateTX = true;
     settings.plotTX = false;
-
+    
+    % setting for decoding
+    settings.packetNum = 50;
+    settings.fastEVM = true;
 end
