@@ -100,7 +100,7 @@ function [rx_waveforms,noise_levels] = NR5G_split_package(rx_fileName,txsetting,
     rx_waveforms = zeros(txlen,packetNum);
     noise_levels = zeros(txlen,packetNum);
     rxWaveform_orignal = File2Wave(rx_fileName);
-    rxWaveform_orignal = rxWaveform_orignal(end-3*txlen*100:end,:);
+%     rxWaveform_orignal = rxWaveform_orignal(end-3*txlen*100:end,:);
     rxWaveform_remain = rxWaveform_orignal; indx = 1;
     while(indx <= packetNum && length(rxWaveform_remain) > txlen*3)
         % Timing Synchronization
