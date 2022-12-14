@@ -88,7 +88,7 @@ function [pdschEq,BER_ratio,EVM] = NR5G_receive(rxWaveform,txsetting)
     % disp("Slot "+(nSlot)+". "+statusReport);
 
 %     [number,BER_ratio] = biterr(decbits,txsetting.trBlk);
-    BER_ratio = biterr(decbits,txsetting.trBlk);
+    [_,BER_ratio] = biterr(decbits,txsetting.trBlk);
     BER_ratio
 
 end
